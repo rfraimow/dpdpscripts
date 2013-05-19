@@ -1,7 +1,7 @@
 #!/bin/bash
 # make access
 version=0.1
-#requires uuid (ossp-uuid), ffmpeg, xmlstarlet
+#requires uuid (ossp-uuid), ffmpeg, xmlstarlet, verifySIPCompliance.py
 script_dir=`dirname "$0"`
 package_path="$1"
 
@@ -50,7 +50,7 @@ for file in `find ./objects -maxdepth 1 -mindepth 1 ! -name '.*' -type f` ; do
     outcomeLinkingObjectIdentifierType="UUID"
     outcomeLinkingObjectIdentifierValue=`uuid -v 4`
     linkingAgentRole="Executing program"
-    
+
     #set premis agent variables
     agentIdentifierType="URI"
     agentIdentifierValue="http://ffmpeg.org"
@@ -59,7 +59,7 @@ for file in `find ./objects -maxdepth 1 -mindepth 1 ! -name '.*' -type f` ; do
     agentNote=`"$ffmpeg_exe" -version 2> /dev/null`
     linkingEventIdentifierType="$eventIdentifierType"
     linkingEventIdentifierValue="eventIdentifierValue"
-    
+
     #ffmpeg time
     event_logs_path="$logs_path/$eventType"
     mkdir -p "$event_logs_path"
@@ -79,5 +79,3 @@ for file in `find ./objects -maxdepth 1 -mindepth 1 ! -name '.*' -type f` ; do
     premis_add_agent.sh -x "$package_path/metadata/premis.xml" -i "$agentIdentifierType" -I "$agentIdentifierValue" -n "$agentName" -T "$agentType" -N "$agentNote" -l "$eventIdentifierType" -L "$eventIdentifierValue"
 
 done
-
-smnadmin@smn:~$ 
