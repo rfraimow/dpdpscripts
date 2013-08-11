@@ -7,7 +7,7 @@ scriptdir=$(dirname "$0")
 CONFIG_FILE="$scriptdir/dpdp.conf"
 
 # local variables
-REQUIRED_VARIABLES=("PBCORE_USERNAME" "PBCORE_PASSWORD")
+REQUIRED_VARIABLES=("PBCORE_USERNAME" "PBCORE_PASSWORD" "PROCESSDIR" "EMAIL_OUTCOME_TO")
 
 config_edit(){
     [ -z "$1" -o -z "$2" ] && { report -w "The config_edit function requires two arguments. Error." ; exit ;};

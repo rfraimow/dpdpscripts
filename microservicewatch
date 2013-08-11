@@ -5,10 +5,6 @@ scriptdir=$(dirname "$0")
 CONFIG_FILE="$scriptdir/dpdp.conf"
 . "$CONFIG_FILE"
 
-# please configure to where you want the drop folders to live
-PROCESSDIR="/mnt/raid1/process"
-EMAIL_OUTCOME_TO="lauren@bavc.org"
-
 NO_ARGS=1
 SCRIPTNAME="$1"
 SCRIPTNAMESHORT=`echo $(basename "${SCRIPTNAME%.*}")`
