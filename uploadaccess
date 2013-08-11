@@ -28,11 +28,11 @@ report -d "pbcoreid ${pbcoreid}"
 report -d "thumbnail_file ${thumbnail_file}"
 report -d "video_file ${video_file}"
 if [ ! -n "${pbcoreid}" -o ! -s "${thumbnail_file}" -o ! -s "${video_file}" ] ; then
-    echo The upload script requires a valid pbcoreurl.txt file, thumbnail, and video proxy.
+    report -w  The upload script requires a valid pbcoreurl.txt file, thumbnail, and video proxy.
     exit 1
 fi
 if [ -s "${1}/metadata/submissionDocumentation/logs/upload_log.txt" ] ; then
-    echo An upload log already exists, upload cancelled.
+    report -w An upload log already exists, upload cancelled.
     exit 86
 fi
 
