@@ -21,6 +21,14 @@ usage(){
 [ "${#}" = 0 ] && usage
 check_dependencies "${dependencies[@]}"
 
+cleanup(){
+    log -a "Process aborted"
+    exit 1
+}
+
+trap cleanup SIGHUP SIGINT SIGTERM
+log -b
+
 # local variables
 CHECKSUMNAME="checksum.md5"
 DFXMLNAME="dfxml.xml"
@@ -54,3 +62,4 @@ while [ "${*}" != "" ] ; do
     fi
     shift
 done
+log -e
