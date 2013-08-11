@@ -31,9 +31,13 @@ if [ ! -n "${pbcoreid}" -o ! -s "${thumbnail_file}" -o ! -s "${video_file}" ] ; 
     report -w  The upload script requires a valid pbcoreurl.txt file, thumbnail, and video proxy.
     exit 1
 fi
+if [ curl "http://archive.danceheritage.org/assets/${pbcoreid}.xml" | grep "<formatDigital>video/mp4</formatDigital>" ] ; then
+    report -w "The asset seems to already have an access copy at http://archive.danceheritage.org/assets/${pbcoreid}"
+    exit 86
+fi
 if [ -s "${1}/metadata/submissionDocumentation/logs/upload_log.txt" ] ; then
     report -w An upload log already exists, upload cancelled.
-    exit 86
+    exit 1
 fi
 
 base=$(basename "${file}")
