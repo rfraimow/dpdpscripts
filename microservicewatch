@@ -19,7 +19,7 @@ report(){
 
 emailoutcome(){
     # fail only at the moment
-    MESSAGETEMPFILE=$(mktemp -d /tmp/mm.XXXX)
+    MESSAGETEMPFILE=$(maketemp)
     echo -e "To: $EMAIL_OUTCOME_TO" > $MESSAGETEMPFILE
     echo -e "Subject: ${PACKAGE} failed during ${SCRIPTNAMESHORT}" >> $MESSAGETEMPFILE
     echo -e ":(" >> $MESSAGETEMPFILE
@@ -57,8 +57,8 @@ PROCESS_DIR="$PROCESSDIR/in_process/${SCRIPTNAMESHORT}/"
 [ -d "$INVALID_DIR" ] || mkdir -p "$INVALID_DIR"
 [ -d "$PROCESS_DIR" ] || mkdir -p "$PROCESS_DIR"
 
-TMP_PKG_LIST=$(mktemp)
-NOWFILE=$(mktemp)
+TMP_PKG_LIST=$(maketemp)
+NOWFILE=$(maketemp)
 sleep 1
 find "$DROP_DIR" -maxdepth 1 -mindepth 1 -type d ! -newer "$NOWFILE" -type d -exec basename "{}" \; > "$TMP_PKG_LIST"
 while read PACKAGE ; do
