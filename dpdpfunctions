@@ -10,6 +10,14 @@ elif [ ! "$CONFIG" = "Y" -a "$requireconfig" = "Y" ] ; then
     exit 1
 fi
 
+get_iso8601(){
+    date +%FT%T
+}
+
+get_iso8601_c(){
+    date +%Y%m%d-%I%M%S
+}
+
 report(){
         local RED="$(tput setaf 1)"   # Red      - For Warnings
         local GREEN="$(tput setaf 2)" # Green    - For Declarations
