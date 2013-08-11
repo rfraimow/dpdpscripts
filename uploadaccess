@@ -1,0 +1,64 @@
+#!/bin/bash
+
+script_dir=`dirname "$0"`
+. dhc_shared.sh
+package_path="$1"
+now=`date -u "+%Y%m%dT%H%M%SZ"`
+
+if [ -z "$package_path" ]; then
+    echo The path to the AIP package must be declared.
+    exit 1
+fi
+
+package_dir=`dirname "$package_path"`
+pkgname=`basename "$package_path"`
+
+pbcoreid=`cat "$package_path/metadata/submissionDocumentation/pbcoreurl.txt" | grep -o ........-....-....-....-............`
+thumbnail_file=`find "$package_path/objects/access/" -type f \( -name '*.jpg' -o -name '*.jpeg' \) | head -n 1`
+video_file=`find "$package_path/objects/access/" -type f -name '*.mp4' | head -n 1`
+echo "pbcoreid $pbcoreid"
+echo "thumbnail_file $thumbnail_file"
+echo "video_file $video_file"
+if [ ! -n "$pbcoreid" -o ! -s "$thumbnail_file" -o ! -s "$video_file" ] ; then
+    echo The upload script requires a valid pbcoreurl.txt file, thumbnail, and video proxy.
+    exit 1
+fi
+if [ -s "${1}/metadata/submissionDocumentation/logs/upload_log.txt" ] ; then
+    echo An upload log already exists, upload cancelled.
+    exit 86
+fi
+
+base=`basename "$file"`
+#set premis event variables
+eventIdentifierType="UUID"
+eventIdentifierValue=`uuid -v 4`
+eventType="upload-access-file"
+eventDateTime=`date "+%FT%T"`
+eventDetail="An access copy is loaded for web-streaming"
+sourceLinkingObjectIdentifierType="URI"
+sourceLinkingObjectIdentifierValue="$file"
+outcomeLinkingObjectIdentifierType="UUID"
+outcomeLinkingObjectIdentifierValue=`uuid -v 4`
+linkingAgentRole="Executing program"
+
+#set premis agent variables
+agentIdentifierType="URI"
+agentIdentifierValue="upload-video"
+agentName="upload-video"
+agentType="software"
+agentNote="DHC SMN Ruby script to manage uploading video to pbcore repository"
+linkingEventIdentifierType="$eventIdentifierType"
+linkingEventIdentifierValue="eventIdentifierValue"
+mkdir -p "${1}/metadata/submissionDocumentation/logs"
+eval "$script_dir/upload-video --site http://archive.danceheritage.org/ --asset '${pbcoreid}' --thumbnail '${thumbnail_file}' --video '${video_file}' --user $PBCORE_USERNAME --pass $PBCORE_PASSWORD" 2>&1 | tee "${1}/metadata/submissionDocumentation/logs/upload_log.txt"
+
+EC=`echo "$?"`
+if [ "$EC" -ne "0" ] ; then
+    eventOutcome="failure"
+    #quarantine?
+else
+    eventOutcome="success"
+fi
+[ ! -f "$package_path/metadata/premis.xml" ] && start_premis.sh "$package_path"
+premis_add_event.sh -x "$package_path/metadata/premis.xml" -i "$eventIdentifierType" -I "$eventIdentifierValue" -T "$eventType" -d "$eventDateTime" -D "$eventDetail" -E "$eventOutcome" -l "$agentIdentifierType" -L "$agentIdentifierValue" -r "$linkingAgentRole" -s "$sourceLinkingObjectIdentifierType" -S "$sourceLinkingObjectIdentifierValue" -o "URI" -O "./objects/access/${base%.*}.mp4"
+premis_add_agent.sh -x "$package_path/metadata/premis.xml" -i "$agentIdentifierType" -I "$agentIdentifierValue" -n "$agentName" -T "$agentType" -N "$agentNote" -l "$eventIdentifierType" -L "$eventIdentifierValue"
