@@ -7,11 +7,18 @@ scriptdir=$(dirname "$0")
 . "$scriptdir/dpdpfunctions" || { echo "Missing '$scriptdir/dpdpfunctions'. Exiting." ; exit 1 ;};
 
 # local variables
-REQUIRED_VARIABLES=("PBCORE_USERNAME" "PBCORE_PASSWORD" "PROCESSDIR" "EMAIL_OUTCOME_TO")
+REQUIRED_VARIABLES=("PBCORE_USERNAME" "PBCORE_PASSWORD" "PROCESSDIR" "EMAIL_OUTCOME_TO" "CUSTOM_LOG_DIR")
 
 config_edit(){
     [ -z "$1" -o -z "$2" ] && { report -w "The config_edit function requires two arguments. Error." ; exit ;};
     sed -i '' "s:^$1=[^ ]*:$1=$2:" "$CONFIG_FILE"
+}
+
+add_key(){
+    key_to_add="$1"
+    if [ ! $(grep "^$key_to_add=" "$CONFIG_FILE") ] ; then
+        echo "$key_to_add=" >> "$CONFIG_FILE"
+    fi
 }
 
 # set up configuration file if required
@@ -20,10 +27,10 @@ if [ ! -f "$CONFIG_FILE" ] ; then
     echo "# This configuration file contains variables." >> "$CONFIG_FILE"
     echo "# Edit the lines below to form KEY=VALUE. Please do not add or remove the existing KEYs. Do not edit CONFIG_FILE_VERSION." >> "$CONFIG_FILE"
     echo "CONFIG_FILE_VERSION=$CONFIG_VERSION" >> "$CONFIG_FILE"
-    for KEY in "${REQUIRED_VARIABLES[@]}" ; do
-        echo "$KEY=" >> "$CONFIG_FILE"
-    done
 fi
+for KEY in "${REQUIRED_VARIABLES[@]}" ; do
+    add_key "$KEY"
+done
 
 report -d "Table of existing variables:"
 for KEY in "${REQUIRED_VARIABLES[@]}" ; do
