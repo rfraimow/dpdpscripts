@@ -3,6 +3,7 @@
 
 # please configure to where you want the drop folders to live
 PROCESSDIR="/mnt/raid1/process"
+EMAIL_OUTCOME_TO="lauren@bavc.org"
 
 NO_ARGS=1
 SCRIPTNAME="$1"
@@ -14,6 +15,16 @@ get_iso8601(){
 }
 report(){
     echo `get_iso8601`" ${SCRIPTNAMESHORT}: ${1}"
+}
+
+emailoutcome(){
+    # fail only at the moment
+    MESSAGETEMPFILE=$(mktemp -d /tmp/mm.XXXX)
+    echo -e "To: $EMAIL_OUTCOME_TO" > $MESSAGETEMPFILE
+    echo -e "Subject: ${PACKAGE} failed during ${SCRIPTNAMESHORT}" >> $MESSAGETEMPFILE
+    echo -e ":(" >> $MESSAGETEMPFILE
+    sendmail -t < $MESSAGETEMPFILE
+    rm -f $MESSAGETEMPFILE
 }
 
 if [ ! -d "$PROCESSDIR" ] ; then
@@ -70,6 +81,7 @@ while read PACKAGE ; do
             mv -v -n "$PROCESS_DIR/$PACKAGE" "$SKIP_DIR/"
         else
             mv -v -n "$PROCESS_DIR/$PACKAGE" "$FAIL_DIR/"
+            emailoutcome
         fi
     else
         mv -v -n "$PACKAGE" "$INVALID_DIR/"
