@@ -18,6 +18,32 @@ get_iso8601_c(){
     date +%Y%m%d-%I%M%S
 }
 
+log(){
+    logname="dpdp.log"
+    logdir="${CUSTOM_LOG_DIR:-/tmp}"
+    logfile="${logdir}/${logname}"
+    if [ ! -d "${logdir}" ] ; then
+        mkdir -p "${logdir}"
+        if [ ${?} -ne 0 ]; then
+            echo "${0}: Can't create log directory at ${logdir}, exiting... Use dpdpconfig to change logging directory."
+            exit 1
+        fi
+    fi
+    OPTIND=1
+    while getopts ":beac" opt; do
+        case "$opt" in
+            b) status="start" ;;              # script is beginning
+            e) status="end"   ;;              # script is ending
+            a) status="abort" ;;              # script is aborted
+            c) status="comment" ;;            # comment about what script is doing
+            w) status+"warning" ;;            # warning information
+        esac
+    done
+    shift $(( ${OPTIND} - 1 ))
+    note="$1"
+    echo $(get_iso8601)", $(basename $0), $status, $op, $mediaid, $note" >> "$logfile"
+}
+
 report(){
         local RED="$(tput setaf 1)"   # Red      - For Warnings
         local GREEN="$(tput setaf 2)" # Green    - For Declarations
