@@ -1,7 +1,8 @@
 #!/bin/bash
 
-script_dir=`dirname "$0"`
-. dhc_shared.sh
+scriptdir=$(dirname "$0")
+CONFIG_FILE="$scriptdir/dpdp.conf"
+. "$CONFIG_FILE"
 package_path="$1"
 now=`date -u "+%Y%m%dT%H%M%SZ"`
 
@@ -50,7 +51,7 @@ agentNote="DHC SMN Ruby script to manage uploading video to pbcore repository"
 linkingEventIdentifierType="$eventIdentifierType"
 linkingEventIdentifierValue="eventIdentifierValue"
 mkdir -p "${1}/metadata/submissionDocumentation/logs"
-eval "$script_dir/upload-video --site http://archive.danceheritage.org/ --asset '${pbcoreid}' --thumbnail '${thumbnail_file}' --video '${video_file}' --user $PBCORE_USERNAME --pass $PBCORE_PASSWORD" 2>&1 | tee "${1}/metadata/submissionDocumentation/logs/upload_log.txt"
+eval "$scriptdir/upload-video --site http://archive.danceheritage.org/ --asset '${pbcoreid}' --thumbnail '${thumbnail_file}' --video '${video_file}' --user $PBCORE_USERNAME --pass $PBCORE_PASSWORD" 2>&1 | tee "${1}/metadata/submissionDocumentation/logs/upload_log.txt"
 
 EC=`echo "$?"`
 if [ "$EC" -ne "0" ] ; then
