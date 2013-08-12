@@ -5,9 +5,10 @@
 version=1.1
 
 scriptdir=$(dirname "${0}")
+scriptname=$(basename "${0}")
 . "${scriptdir}/dpdpfunctions" || { echo "Missing '${scriptdir}/dpdpfunctions'. Exiting." ; exit 1 ;};
 unset dependencies
-dependencies=(md5deep xml "${scriptdir}/removeDSStore")
+dependencies=(md5deep xml "${scriptdir}/removeDSStore" start_premis.sh premis_add_event.sh premis_add_agent.sh)
 
 usage(){
     echo
@@ -52,6 +53,11 @@ while [ "${*}" != "" ] ; do
             md5deep -drl . > $DFXMLTMP
             mv "${DFXMLTMP}" "${1}/${OUTDIR}/${DFXMLNAME}"
             xml sel -T -t -m "/dfxml/fileobject" -v "hashdigest" -o "  " -v "filename" -n "${1}/${OUTDIR}/${DFXMLNAME}" > "${1}/${OUTDIR}/${CHECKSUMNAME}"
+            if [ "${?}" -ne "0" ] ; then
+                eventOutcome="failure"
+            else
+                eventOutcome="success"
+            fi
             cd "${PWD}"
         else
             report -dt "${CHECKSUMNAME} already exists, skipping for ${1}"
@@ -60,6 +66,33 @@ while [ "${*}" != "" ] ; do
     else
     report -dt "ERROR: ${0} requires directories as input and $1 is not a directory."
     fi
+
+    #set premis event variables
+    eventIdentifierType="UUID"
+    eventIdentifierValue=$(uuid -v 4)
+    eventType="${scriptname}"
+    eventDateTime=$(get_iso8601)
+    eventDetail="Create checksum documents for $(basename ${1})"
+    sourceLinkingObjectIdentifierType="URI"
+    sourceLinkingObjectIdentifierValue="${file}"
+    outcomeLinkingObjectIdentifierType="UUID"
+    outcomeLinkingObjectIdentifierValue=$(uuid -v 4)
+    linkingAgentRole="Executing program"
+
+    #set premis agent variables
+    agentIdentifierType="URI"
+    agentIdentifierValue="http://md5deep.sourceforge.net/"
+    agentName="md5deep"
+    agentType="software"
+    agentNote="Version: $(md5deep -v)"
+    linkingEventIdentifierType="${eventIdentifierType}"
+    linkingEventIdentifierValue="eventIdentifierValue"
+    mkdir -p "${1}/metadata/submissionDocumentation/logs"
+
+    [ ! -f "${package_path}/metadata/premis.xml" ] && start_premis.sh "${package_path}"
+    premis_add_event.sh -x "${package_path}/metadata/premis.xml" -i "${eventIdentifierType}" -I "${eventIdentifierValue}" -T "${eventType}" -d "${eventDateTime}" -D "${eventDetail}" -E "${eventOutcome}" -l "${agentIdentifierType}" -L "${agentIdentifierValue}" -r "${linkingAgentRole}" -s "${sourceLinkingObjectIdentifierType}" -S "${sourceLinkingObjectIdentifierValue}" -o "URI" -O "./${OUTDIR}/${CHECKSUMNAME}"
+    premis_add_agent.sh -x "${package_path}/metadata/premis.xml" -i "${agentIdentifierType}" -I "${agentIdentifierValue}" -n "${agentName}" -T "${agentType}" -N "${agentNote}" -l "${eventIdentifierType}" -L "${eventIdentifierValue}"
+    log -e
+
     shift
 done
-log -e
