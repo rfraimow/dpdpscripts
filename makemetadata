@@ -1,0 +1,117 @@
+#!/bin/bash 
+# make metadata
+#produces errors on zero-sized files
+
+scriptdir=$(dirname "$0")
+
+cleanup(){
+    log -a "Process aborted"
+    exit 1
+}
+
+trap cleanup SIGHUP SIGINT SIGTERM
+
+usage(){
+    echo
+    echo "$(basename $0) ${version}"
+    echo "This script may be run interactively by running it with no arguments or may be used with the following options."
+    echo "Usage: $(basename $0) [ -m mediaid ]"
+    echo "  -m mediaid"
+    exit
+}
+
+# command-line options to set mediaid and original variables
+OPTIND=1
+while getopts ":hm:" opt; do
+    case "$opt" in
+        h) usage ;;
+        m) mediaid="$OPTARG" ;;
+        \?) echo "Invalid option: -$OPTARG" ; exit 1 ;;
+        :) echo "Option -$OPTARG requires an argument" ; exit 1 ;;
+    esac
+done
+shift $(( ${OPTIND} - 1 ))
+
+logs_path="./metadata/submissionDocumentation/logs"
+
+while [ "$*" != "" ] ; do
+    uuid=$(uuidgen)
+    package_path="$1"
+    cd "$1"
+    objects_file=$(find "./objects" -maxdepth 1 -mindepth 1 -type f ! -name ".*")
+    if [ -d ./objects/service ] ; then
+        service_file=$(find "./objects/service" -maxdepth 1 -mindepth 1 -type f ! -name ".*")
+        servicebasename=$(basename "$service_file")
+
+    fi
+    mkdir -p "/tmp/$uuid"
+
+    outputdir="./metadata/submissionDocumentation/fileMeta"
+    mkdir -p "$outputdir"
+
+    objectbasename=$(basename "$objects_file")
+    mediaid=$(basename "$1" | cut -d. -f1)
+
+    find "./objects" -mindepth 1 -maxdepth 1 -type d > "/tmp/$uuid/access.txt"
+    while read access ; do
+        accessname=$(basename "$access")
+        find "$access" -type f ! -name ".*" > "/tmp/$uuid/access_${accessname}.txt"
+        while read access_file ; do
+            mkdir -p "$outputdir/access/$accessname"
+            accessbasename=$(basename "$access_file")
+            ffprobe 2>/dev/null "$access_file" -show_format -show_streams -show_data -show_error -show_versions -noprivate -of xml="q=1:x=1" > "$outputdir/access/$accessname/${accessbasename%.*}_ffprobe.xml"
+            ffprobe 2>/dev/null "$access_file" -show_format -show_streams -show_data -show_error -show_versions -of json > "$outputdir/access/$accessname/${accessbasename%.*}_ffprobe.json"
+        mediainfo --language=raw -f --output=XML "$access_file" > "$outputdir/access/$accessname/${accessbasename%.*}_mediainfo.xml"
+        done < "/tmp/$uuid/access_${accessname}.txt"
+    done < "/tmp/$uuid/access.txt"
+
+    outputdir="./metadata/submissionDocumentation/fileMeta"
+    mkdir -p "$outputdir"
+
+    # transcode
+    echo "STATUS Making metadata reports for ${mediaid}."
+
+    #only works with one file in objects , to do
+    mkdir -p "$outputdir/objects"
+    ffprobe 2>/dev/null "$objects_file" -show_format -show_streams -show_data -show_error -show_versions -noprivate -of xml="q=1:x=1" > "$outputdir/objects/${objectbasename%.*}_ffprobe.xml"
+    ffprobe 2>/dev/null "$objects_file" -show_format -show_streams -show_data -show_error -show_versions -of json > "$outputdir/objects/${objectbasename%.*}_ffprobe.json"
+    mediainfo --language=raw -f --output=XML "$objects_file" > "$outputdir/objects/${objectbasename%.*}_mediainfo.xml"
+
+    if [ -d ./objects/service ] ; then
+        mkdir -p "$outputdir/service"
+        ffprobe 2>/dev/null "$service_file" -show_format -show_streams -show_data -show_error -show_versions -noprivate -of xml="q=1:x=1" > "$outputdir/service/${servicebasename%.*}_ffprobe.xml"
+        ffprobe 2>/dev/null "$service_file" -show_format -show_streams -show_data -show_error -show_versions -of json > "$outputdir/service/${servicebasename%.*}_ffprobe.json"
+        mediainfo --language=raw -f --output=XML "$service_file" > "$outputdir/service/${servicebasename%.*}_mediainfo.xml"
+    fi
+    rm -r -f "/tmp/$uuid"
+    shift
+    
+    #set premis event variables
+    eventIdentifierType="UUID"
+    eventIdentifierValue=`uuid -v 4`
+    eventType="makemetadata"
+    eventDateTime=`date "+%FT%T"`
+    eventDetail="Original objects are assessed with ffprobe and mediainfo"
+    sourceLinkingObjectIdentifierType="URI"
+    sourceLinkingObjectIdentifierValue="$file"
+    outcomeLinkingObjectIdentifierType="UUID"
+    outcomeLinkingObjectIdentifierValue=`uuid -v 4`
+    linkingAgentRole="Executing program"
+
+    #set premis agent variables
+    agentIdentifierType="URI"
+    agentIdentifierValue="http://github.com/bavc/DPDP_Scripts/blob/master/makemetadata"
+    agentName="makemetadata (mediainfo and ffprobe)"
+    agentType="software"
+    linkingEventIdentifierType="$eventIdentifierType"
+    linkingEventIdentifierValue="eventIdentifierValue"
+    
+    event_logs_path="$logs_path/$eventType"
+    mkdir -p "$event_logs_path"
+    
+    cd "$startdir"
+    [ ! -f "$package_path/metadata/premis.xml" ] && start_premis.sh "$package_path"
+    premis_add_event.sh -x "$package_path/metadata/premis.xml" -i "$eventIdentifierType" -I "$eventIdentifierValue" -T "$eventType" -d "$eventDateTime" -D "$eventDetail" -E "$eventOutcome" -l "$agentIdentifierType" -L "$agentIdentifierValue" -r "$linkingAgentRole" -s "$sourceLinkingObjectIdentifierType" -S "$sourceLinkingObjectIdentifierValue" -o "URI" -O "./objects/access/${base%.*}.mp4"
+    premis_add_agent.sh -x "$package_path/metadata/premis.xml" -i "$agentIdentifierType" -I "$agentIdentifierValue" -n "$agentName" -T "$agentType" -N "$agentNote" -l "$eventIdentifierType" -L "$eventIdentifierValue"
+    
+done
