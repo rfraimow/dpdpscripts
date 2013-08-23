@@ -2,7 +2,7 @@
 # make metadata
 #produces errors on zero-sized files
 
-scriptdir=$(dirname "$0")
+scriptdir=$(dirname $(which "$0"))
 
 cleanup(){
     log -a "Process aborted"
@@ -10,6 +10,7 @@ cleanup(){
 }
 
 trap cleanup SIGHUP SIGINT SIGTERM
+log -b
 
 usage(){
     echo
@@ -92,7 +93,6 @@ while [ "$*" != "" ] ; do
         exiftool "$service_file" > "$outputdir/service/${servicebasename%.*}_exiftool.txt"
     fi
     rm -r -f "/tmp/$uuid"
-    shift
     
     #set premis event variables
     eventIdentifierType="UUID"
@@ -121,5 +121,6 @@ while [ "$*" != "" ] ; do
     [ ! -f "$package_path/metadata/premis.xml" ] && start_premis.sh "$package_path"
     premis_add_event.sh -x "$package_path/metadata/premis.xml" -i "$eventIdentifierType" -I "$eventIdentifierValue" -T "$eventType" -d "$eventDateTime" -D "$eventDetail" -E "$eventOutcome" -l "$agentIdentifierType" -L "$agentIdentifierValue" -r "$linkingAgentRole" -s "$sourceLinkingObjectIdentifierType" -S "$sourceLinkingObjectIdentifierValue" -o "URI" -O "./objects/access/${base%.*}.mp4"
     premis_add_agent.sh -x "$package_path/metadata/premis.xml" -i "$agentIdentifierType" -I "$agentIdentifierValue" -n "$agentName" -T "$agentType" -N "$agentNote" -l "$eventIdentifierType" -L "$eventIdentifierValue"
-    
+    shift
+    log -e
 done
