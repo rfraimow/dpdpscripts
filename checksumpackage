@@ -4,7 +4,7 @@
 # version 1.1 adds use of dfxml
 version=1.1
 
-scriptdir=$(dirname "${0}")
+scriptdir=$(dirname $(which "$0"))
 scriptname=$(basename "${0}")
 . "${scriptdir}/dpdpfunctions" || { echo "Missing '${scriptdir}/dpdpfunctions'. Exiting." ; exit 1 ;};
 unset dependencies
