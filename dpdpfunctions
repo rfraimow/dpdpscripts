@@ -1,0 +1,112 @@
+# assign variables
+SCRIPTNAME=$(basename "$0")
+CONFIG_FILE="$scriptdir/dpdp.conf"
+
+# load configuration file
+if [ -f "$CONFIG_FILE" ] ; then
+    . "$CONFIG_FILE"
+elif [ ! "$CONFIG" = "Y" -a "$requireconfig" = "Y" ] ; then
+    echo "The configuration file is not set. You must first create $CONFIG_FILE by running dpdpconfig." 1>&2
+    exit 1
+fi
+
+get_iso8601(){
+    date +%FT%T
+}
+
+get_iso8601_c(){
+    date +%Y%m%d-%I%M%S
+}
+
+log(){
+    logname="dpdp.log"
+    logdir="${CUSTOM_LOG_DIR:-/tmp}"
+    logfile="${logdir}/${logname}"
+    if [ ! -d "${logdir}" ] ; then
+        mkdir -p "${logdir}"
+        if [ ${?} -ne 0 ]; then
+            echo "${0}: Can't create log directory at ${logdir}, exiting... Use dpdpconfig to change logging directory."
+            exit 1
+        fi
+    fi
+    OPTIND=1
+    while getopts ":beac" opt; do
+        case "$opt" in
+            b) status="start" ;;              # script is beginning
+            e) status="end"   ;;              # script is ending
+            a) status="abort" ;;              # script is aborted
+            c) status="comment" ;;            # comment about what script is doing
+            w) status+"warning" ;;            # warning information
+        esac
+    done
+    shift $(( ${OPTIND} - 1 ))
+    note="$1"
+    echo $(get_iso8601)", $(basename $0), $status, $op, $mediaid, $note" >> "$logfile"
+}
+
+report(){
+        local RED="$(tput setaf 1)"   # Red      - For Warnings
+        local GREEN="$(tput setaf 2)" # Green    - For Declarations
+        local BLUE="$(tput setaf 4)"  # Blue     - For Questions
+        local NC="$(tput sgr0)"       # No Color
+        local color=""
+        local startmessage=""
+        local endmessage=""
+        local echoopt=""
+        OPTIND=1
+        while getopts ":qdwstn" opt; do
+            case "$opt" in
+                q) color="$BLUE" ;;                         # question mode, use color blue
+                d) color="$GREEN" ;;                        # declaration mode, use color green
+                w) color="$RED" ; log="Y";;                 # warning mode, use color red
+                s) startmessage+=([$(basename $0)] ) ;;     # prepend scriptname to the message
+                t) startmessage+=($(get_iso8601) '- ' ) ;;     # prepend timestamp to the message
+                n) echoopt="-n" ;;                          # to avoid line breaks after echo
+            esac
+        done
+        shift $(( ${OPTIND} - 1 ))
+        message="$1"
+        echo $echoopt "${color}${startmessage[@]}${message}${NC}"
+        [ "$log" = "Y" ] && log -w "$message"
+}
+
+maketemp(){
+    mktemp -q "/tmp/$(basename $0).XXXXXX"
+    if [ ${?} -ne 0 ]; then
+        echo "${0}: Can't create temp file, exiting..."
+        exit 1
+    fi
+}
+
+check_dependencies(){
+    deps_ok=YES
+    while [ "$*" != "" ] ; do
+        dependency="$1"
+        if [ ! $(which $dependency) ] ; then
+            report -wt "This script requires $dependency to run but it is not installed"
+            report -wt "If you are running ubuntu or debian you might be able to install $dependency with the following command"
+            report -wt "sudo apt-get install ${dependency}"
+            report -wt "If you are running mac you might be able to install $dependency with the following command"
+            report -wt "brew install ${dependency}"
+            deps_ok=NO
+        fi
+        shift
+    done
+    if [[ "$deps_ok" == "NO" ]]; then
+        report -wt "Unmet dependencies"
+        report -wt "Aborting!"
+        exit 1
+    else
+        return 0
+    fi
+}
+
+emailoutcome(){
+    # fail only at the moment
+    MESSAGETEMPFILE=$(maketemp)
+    echo -e "To: $EMAIL_OUTCOME_TO" > $MESSAGETEMPFILE
+    echo -e "Subject: ${PACKAGE} failed during ${SCRIPTNAMESHORT}" >> $MESSAGETEMPFILE
+    echo -e ":(" >> $MESSAGETEMPFILE
+    sendmail -t < $MESSAGETEMPFILE
+    rm -f $MESSAGETEMPFILE
+}

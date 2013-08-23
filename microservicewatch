@@ -1,20 +1,15 @@
 #!/bin/bash
 # cron job script for selected microservice
 
-# please configure to where you want the drop folders to live
-PROCESSDIR="/mnt/raid1/process"
+scriptdir=$(dirname $(which "$0"))
+CONFIG_FILE="$scriptdir/dpdp.conf"
+. "$CONFIG_FILE"
+
+. "${scriptdir}/dpdpfunctions" || { echo "Missing '${scriptdir}/dpdpfunctions'. Exiting." ; exit 1 ;};
 
 NO_ARGS=1
 SCRIPTNAME="$1"
 SCRIPTNAMESHORT=`echo $(basename "${SCRIPTNAME%.*}")`
-
-# used functions
-get_iso8601(){
-    date +%FT%T
-}
-report(){
-    echo `get_iso8601`" ${SCRIPTNAMESHORT}: ${1}"
-}
 
 if [ ! -d "$PROCESSDIR" ] ; then
     report "$PROCESSDIR is not found"
@@ -46,13 +41,14 @@ PROCESS_DIR="$PROCESSDIR/in_process/${SCRIPTNAMESHORT}/"
 [ -d "$INVALID_DIR" ] || mkdir -p "$INVALID_DIR"
 [ -d "$PROCESS_DIR" ] || mkdir -p "$PROCESS_DIR"
 
-TMP_PKG_LIST=$(mktemp)
-NOWFILE=$(mktemp)
+TMP_PKG_LIST=$(maketemp)
+NOWFILE=$(maketemp)
 sleep 1
 find "$DROP_DIR" -maxdepth 1 -mindepth 1 -type d ! -newer "$NOWFILE" -type d -exec basename "{}" \; > "$TMP_PKG_LIST"
 while read PACKAGE ; do
     startdir=$(pwd)
     cd "$DROP_DIR"
+    [ ! -w "$PACKAGE" ] && emailoutcome "I do not have permission to work with $PACKAGE. What am I supposed to do?"
     # warning, deleting .DS_Store files before processing package
     find "$PACKAGE" -name '*.DS_Store' -type f -delete
     [ -f "/tmp/${PACKAGE}_validityerror1.txt" ] && rm "/tmp/${PACKAGE}_validityerror1.txt"
@@ -70,6 +66,7 @@ while read PACKAGE ; do
             mv -v -n "$PROCESS_DIR/$PACKAGE" "$SKIP_DIR/"
         else
             mv -v -n "$PROCESS_DIR/$PACKAGE" "$FAIL_DIR/"
+            emailoutcome
         fi
     else
         mv -v -n "$PACKAGE" "$INVALID_DIR/"
