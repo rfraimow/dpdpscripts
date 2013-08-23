@@ -48,6 +48,7 @@ find "$DROP_DIR" -maxdepth 1 -mindepth 1 -type d ! -newer "$NOWFILE" -type d -ex
 while read PACKAGE ; do
     startdir=$(pwd)
     cd "$DROP_DIR"
+    [ ! -w "$PACKAGE" ] && emailoutcome "I do not have permission to work with $PACKAGE. What am I supposed to do?"
     # warning, deleting .DS_Store files before processing package
     find "$PACKAGE" -name '*.DS_Store' -type f -delete
     [ -f "/tmp/${PACKAGE}_validityerror1.txt" ] && rm "/tmp/${PACKAGE}_validityerror1.txt"
