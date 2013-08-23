@@ -3,8 +3,12 @@
 version=0.2
 #requires uuid (ossp-uuid), ffmpeg, xmlstarlet
 #Associated scripts: verifySIPCompliance.py 
-script_dir=`dirname "$0"`
+scriptdir=$(dirname $(which "$0"))
 package_path="$1"
+
+. "${scriptdir}/dpdpfunctions" || { echo "Missing '${scriptdir}/dpdpfunctions'. Exiting." ; exit 1 ;};
+unset dependencies
+dependencies=(ffmpeg xml "${scriptdir}/removeDSStore" start_premis.sh premis_add_event.sh premis_add_agent.sh)
 
 onjects_path="./objects"
 logs_path="./metadata/submissionDocumentation/logs"
@@ -12,14 +16,15 @@ techmd_path="./metadata/submissionDocumentation/techmd"
 access_path="./objects/access"
 
 metadata_path="./metadata"
-ffmpeg_exe="/usr/local/bin/ffmpeg"
+
+check_dependencies "${dependencies[@]}"
 
 #checks on script arguments, package compliance check, will it conform and run in Archivematica?
 [ "$#" -ne "1" ] && { echo This script requires one argument, the path to a repository SIP. ; exit 1 ;};
 [ ! -d "$package_path" ] && { echo "$package_path" is not a directory. ; exit 1 ;};
 
 # warning, deleting .DS_Store files before processing package
-find "$PACKAGE" -name '*.DS_Store' -type f -delete
+find "$package_path" -name '*.DS_Store' -type f -delete
 
 verifySIPCompliance.py "$package_path"
 [ "$?" != 0 ] && { echo "$package_path file SIP Compliance tests." ; exit 1 ;};
@@ -66,7 +71,7 @@ for file in `find ./objects -maxdepth 1 -mindepth 1 ! -name '.*' -type f` ; do
     mkdir -p "$event_logs_path"
     mkdir -p "$techmd_path"
     export FFREPORT="file=${event_logs_path}/%p_%t_$(basename $0)_${version}.txt"
-    "$ffmpeg_exe" -n -report -i "$file" -c:v libx264 -pix_fmt yuv420p -b:v 750k -vf "yadif" -c:a:1 aac -b:a 128k "${access_path}/${base%.*}.mp4"
+    ffmpeg -n -report -v warning -i "$file" -c:v libx264 -pix_fmt yuv420p -b:v 750k -vf "yadif" -c:a:1 aac -b:a 128k "${access_path}/${base%.*}.mp4"
     EC=`echo "$?"`
     if [ "$EC" -ne "0" ] ; then
         eventOutcome="failure"
@@ -80,5 +85,3 @@ for file in `find ./objects -maxdepth 1 -mindepth 1 ! -name '.*' -type f` ; do
     premis_add_agent.sh -x "$package_path/metadata/premis.xml" -i "$agentIdentifierType" -I "$agentIdentifierValue" -n "$agentName" -T "$agentType" -N "$agentNote" -l "$eventIdentifierType" -L "$eventIdentifierValue"
 
 done
-
-smnadmin@smn:~$ 
