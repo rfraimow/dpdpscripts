@@ -1,0 +1,49 @@
+#!/bin/bash
+# refiler. Tosses files into metadata/submissionDocumentation or objects of an archivematica-style SIP.
+
+PACKAGE="$1"
+startdir=$(pwd)
+submissiondoc_dir="$PACKAGE/metadata/submissionDocumentation"
+prototypefiles_dir="$submissiondoc_dir/prototype_files/"
+unbagit_dir="$submissiondoc_dir/unbagit/"
+
+makeprototype_files(){
+    if [ ! -d "$prototypefiles_dir" ] ; then
+        mkdir -p "$prototypefiles_dir"
+    fi
+}
+
+unbagit_files(){
+    if [ ! -d "$unbagit_dir" ] ; then
+        mkdir -p "$unbagit_dir"
+    fi
+}
+
+cd "$PACKAGE"
+listoffiles=$(find . -type f | grep -v "/objects/" | grep -v "/metadata/submissionDocumentation/" | grep -v "checksum.md5" | grep -v "dfxml.xml")
+echo "$listoffiles"
+for odd_dir in "$PACKAGE/metadata/mediainfo" "$PACKAGE/metadata/pbcore" "$PACKAGE/metadata/ffmpeg" "$PACKAGE/metadata/exiftool" ; do
+    if [ -d "$odd_dir" ] ; then
+        makeprototype_files
+        mv -v -n "$odd_dir" "$prototypefiles_dir"
+    fi
+done
+for move_it in "$PACKAGE/metadata/mediainfo.xml" "$PACKAGE/metadata/premis.xml" "$PACKAGE/metadata/dvgrab.log" ; do
+    if [ -f "$move_it" ] ; then
+        makeprototype_files
+        mv -v -n "$move_it" "$submissiondoc_dir"
+    fi
+done
+for move_it in "$PACKAGE/metadata/bag-info.txt" "$PACKAGE/metadata/bagit.txt" "$PACKAGE/metadata/manifest-md5.txt" "$PACKAGE/metadata/tagmanifest-md5.txt" ; do
+    if [ -f "$move_it" ] ; then
+        unbagit_files
+        mv -v -n "$move_it" "$unbagit_dir"
+    fi
+done
+find "$PACKAGE/logs" -mindepth 1 -maxdepth 1 -exec mv -v -n "{}" "$submissiondoc_dir" \;
+find $PACKAGE/metadata/dhcsmn-DHC*_mediainfo_media* -exec mv -v -n "{}" "$prototypefiles_dir" \;
+find $PACKAGE/metadata/DHC*_mediainfo_media.* -exec mv -v -n "{}" "$prototypefiles_dir" \;
+find $PACKAGE/metadata/DHC*_premis.xml -exec mv -v -n "{}" "$prototypefiles_dir" \;
+find $PACKAGE/metadata/dhcsmn-DHC*_premis.xml -exec mv -v -n "{}" "$prototypefiles_dir" \;
+cd "$startdir"
+
