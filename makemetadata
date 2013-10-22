@@ -54,8 +54,8 @@ while [ "$*" != "" ] ; do
         parentdir=$(dirname "$file")
         fileoutput="$outputdir/$parentdir"
         mkdir -p "$fileoutput"
-        ffprobe 2> /dev/null "$file" -show_format -show_streams -show_data -show_error -show_versions -noprivate -of xml="q=1:x=1" > "$fileoutput/${filenameroot%.*}_ffprobe.xml"
-        ffprobe 2> /dev/null "$file" -show_format -show_streams -show_data -show_error -show_versions -of json > "$fileoutput/${filenameroot%.*}_ffprobe.json"
+        ffprobe 2> /dev/null "$file" -show_format -show_streams -show_data -show_error -show_versions -show_chapters -noprivate -of xml="q=1:x=1" > "$fileoutput/${filenameroot%.*}_ffprobe.xml"
+        ffprobe 2> /dev/null "$file" -show_format -show_streams -show_data -show_error -show_versions -show_chapters -of json > "$fileoutput/${filenameroot%.*}_ffprobe.json"
         mediainfo --language=raw -f --output=XML "$file" > "$fileoutput/${filenameroot%.*}_mediainfo.xml"
         mediainfo --inform="Details;1" "$file" > "$fileoutput/${filenameroot%.*}_mediainfo_trace.txt"
         exiftool -X "$file" > "$fileoutput/${filenameroot%.*}_exiftool.xml"
