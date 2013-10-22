@@ -1,8 +1,9 @@
 #!/bin/bash 
 # make metadata
 #produces errors on zero-sized files
-
+version="0.2"
 scriptdir=$(dirname $(which "$0"))
+. "${scriptdir}/dpdpfunctions" || { echo "Missing '${scriptdir}/dpdpfunctions'. Exiting." ; exit 1 ;};
 
 cleanup(){
     exit 1
@@ -31,66 +32,38 @@ while getopts ":hm:" opt; do
 done
 shift $(( ${OPTIND} - 1 ))
 
-logs_path="./metadata/submissionDocumentation/logs"
+outputdir="./metadata/submissionDocumentation/fileMeta"
+mkdir -p "$outputdir"
 
 while [ "$*" != "" ] ; do
     uuid=$(uuidgen)
     package_path="$1"
-    cd "$1"
-    objects_file=$(find "./objects" -maxdepth 1 -mindepth 1 -type f ! -name ".*")
+    mediaid=$(basename "$package_path" | cut -d. -f1)
+    pwd=$(pwd)
+    cd "$package_path"
+    FILELIST=$(maketemp)
+    find "./objects" -type f ! -name ".*" > "$FILELIST"
     if [ -d ./objects/service ] ; then
         service_file=$(find "./objects/service" -maxdepth 1 -mindepth 1 -type f ! -name ".*")
         servicebasename=$(basename "$service_file")
-
     fi
-    mkdir -p "/tmp/$uuid"
 
-    outputdir="./metadata/submissionDocumentation/fileMeta"
-    mkdir -p "$outputdir"
-
-    objectbasename=$(basename "$objects_file")
-    mediaid=$(basename "$1" | cut -d. -f1)
-
-    find "./objects" -mindepth 1 -maxdepth 1 -type d > "/tmp/$uuid/access.txt"
-    while read access ; do
-        accessname=$(basename "$access")
-        find "$access" -type f ! -name ".*" > "/tmp/$uuid/access_${accessname}.txt"
-        while read access_file ; do
-            mkdir -p "$outputdir/access/$accessname"
-            accessbasename=$(basename "$access_file")
-            ffprobe 2>/dev/null "$access_file" -show_format -show_streams -show_data -show_error -show_versions -noprivate -of xml="q=1:x=1" > "$outputdir/$accessname/${accessbasename%.*}_ffprobe.xml"
-            ffprobe 2>/dev/null "$access_file" -show_format -show_streams -show_data -show_error -show_versions -of json > "$outputdir/$accessname/${accessbasename%.*}_ffprobe.json"
-            mediainfo --language=raw -f --output=XML "$access_file" > "$outputdir/$accessname/${accessbasename%.*}_mediainfo.xml"
-            mediainfo --inform="Details;1" "$access_file" > "$outputdir/$accessname/${accessbasename%.*}_mediainfo_trace.txt"
-            exiftool -X "$access_file" > "$outputdir/$accessname/${accessbasename%.*}_exiftool.xml"
-            exiftool "$access_file" > "$outputdir/$accessname/${accessbasename%.*}_exiftool.txt"
-        done < "/tmp/$uuid/access_${accessname}.txt"
-    done < "/tmp/$uuid/access.txt"
-
-    outputdir="./metadata/submissionDocumentation/fileMeta"
-    mkdir -p "$outputdir"
-
-    # transcode
     echo "STATUS Making metadata reports for ${mediaid}."
-
-    #only works with one file in objects , to do
-    mkdir -p "$outputdir/objects"
-    ffprobe 2>/dev/null "$objects_file" -show_format -show_streams -show_data -show_error -show_versions -noprivate -of xml="q=1:x=1" > "$outputdir/objects/${objectbasename%.*}_ffprobe.xml"
-    ffprobe 2>/dev/null "$objects_file" -show_format -show_streams -show_data -show_error -show_versions -of json > "$outputdir/objects/${objectbasename%.*}_ffprobe.json"
-    mediainfo --language=raw -f --output=XML "$objects_file" > "$outputdir/objects/${objectbasename%.*}_mediainfo.xml"
-    mediainfo --inform="Details;1" "$objects_file" > "$outputdir/objects/${objectbasename%.*}_mediainfo_trace.txt"
-    exiftool -X "$objects_file" > "$outputdir/objects/${objectbasename%.*}_exiftool.xml"
-    exiftool "$objects_file" > "$outputdir/objects/${objectbasename%.*}_exiftool.txt"
-    if [ -d ./objects/service ] ; then
-        mkdir -p "$outputdir/service"
-        ffprobe 2>/dev/null "$service_file" -show_format -show_streams -show_data -show_error -show_versions -noprivate -of xml="q=1:x=1" > "$outputdir/service/${servicebasename%.*}_ffprobe.xml"
-        ffprobe 2>/dev/null "$service_file" -show_format -show_streams -show_data -show_error -show_versions -of json > "$outputdir/service/${servicebasename%.*}_ffprobe.json"
-        mediainfo --language=raw -f --output=XML "$service_file" > "$outputdir/service/${servicebasename%.*}_mediainfo.xml"
-        mediainfo --inform="Details;1" "$service_file" > "$outputdir/service/${servicebasename%.*}_mediainfo_trace.txt"
-        exiftool -X "$service_file" > "$outputdir/service/${servicebasename%.*}_exiftool.xml"
-        exiftool "$service_file" > "$outputdir/service/${servicebasename%.*}_exiftool.txt"
-    fi
-    rm -r -f "/tmp/$uuid"
+    while read file ; do
+        filenameroot=$(basename "$file")
+        parentdir=$(dirname "$file")
+        fileoutput="$outputdir/$parentdir"
+        mkdir -p "$fileoutput"
+        ffprobe 2> /dev/null "$file" -show_format -show_streams -show_data -show_error -show_versions -noprivate -of xml="q=1:x=1" > "$fileoutput/${filenameroot%.*}_ffprobe.xml"
+        ffprobe 2> /dev/null "$file" -show_format -show_streams -show_data -show_error -show_versions -of json > "$fileoutput/${filenameroot%.*}_ffprobe.json"
+        mediainfo --language=raw -f --output=XML "$file" > "$fileoutput/${filenameroot%.*}_mediainfo.xml"
+        mediainfo --inform="Details;1" "$file" > "$fileoutput/${filenameroot%.*}_mediainfo_trace.txt"
+        exiftool -X "$file" > "$fileoutput/${filenameroot%.*}_exiftool.xml"
+        exiftool "$file" > "$fileoutput/${filenameroot%.*}_exiftool.txt"
+    done < "$FILELIST"
+    
+    cd "$pwd"
+    rm -r -f "$FILELIST"
     
     #set premis event variables
     eventIdentifierType="UUID"
@@ -112,6 +85,7 @@ while [ "$*" != "" ] ; do
     linkingEventIdentifierType="$eventIdentifierType"
     linkingEventIdentifierValue="eventIdentifierValue"
     
+    logs_path="./metadata/submissionDocumentation/logs"
     event_logs_path="$logs_path/$eventType"
     mkdir -p "$event_logs_path"
     
