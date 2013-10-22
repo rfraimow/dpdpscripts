@@ -1,19 +1,38 @@
 #!/bin/bash
 
-scriptdir=$(dirname "${0}")
+scriptdir=$(dirname $(which "$0"))
+. "${scriptdir}/dpdpfunctions" || { echo "Missing '${scriptdir}/dpdpfunctions'. Exiting." ; exit 1 ;};
 CONFIG_FILE="${scriptdir}/dpdp.conf"
 . "${CONFIG_FILE}"
-package_path="${1}"
-
-if [ -z "${package_path}" ]; then
-    report -w The path to the AIP package must be declared.
-    exit 1
-fi
+force=""
 
 cleanup(){
     log -a "Process aborted"
     exit 1
 }
+
+usage(){
+    echo didnt write it yet
+    exit
+}
+
+# command-line options to set mediaid and original variables
+OPTIND=1
+while getopts ":fh:" opt; do
+    case "$opt" in
+        f) force="Y" ;;
+        h) usage ;;
+        \?) echo "Invalid option: -$OPTARG" ; exit 1 ;;
+        :) echo "Option -$OPTARG requires an argument" ; exit 1 ;;
+    esac
+done
+shift $(( ${OPTIND} - 1 ))
+
+package_path="${1}"
+if [ -z "${package_path}" ]; then
+    report -w The path to the AIP package must be declared.
+    exit 1
+fi
 
 trap cleanup SIGHUP SIGINT SIGTERM
 log -b
@@ -31,15 +50,15 @@ if [ ! -n "${pbcoreid}" -o ! -s "${thumbnail_file}" -o ! -s "${video_file}" ] ; 
     report -w  The upload script requires a valid pbcoreurl.txt file, thumbnail, and video proxy.
     exit 1
 fi
-if [ curl "http://archive.danceheritage.org/assets/${pbcoreid}.xml" | grep "<formatDigital>video/mp4</formatDigital>" ] ; then
-    report -w "The asset seems to already have an access copy at http://archive.danceheritage.org/assets/${pbcoreid}"
-    exit 86
+if [ ! "$force" = "Y" ] ;then
+    if [ $(curl "http://archive.danceheritage.org/assets/${pbcoreid}.xml" | grep "<formatDigital>video/mp4</formatDigital>") ] ; then
+        report -w "The asset seems to already have an access copy at http://archive.danceheritage.org/assets/${pbcoreid}"
+        exit 86
+    elif [ -s "${1}/metadata/submissionDocumentation/logs/upload_log.txt" ] ; then
+        report -w "An upload log already exists, upload cancelled."
+        exit 1
+    fi
 fi
-if [ -s "${1}/metadata/submissionDocumentation/logs/upload_log.txt" ] ; then
-    report -w An upload log already exists, upload cancelled.
-    exit 1
-fi
-
 base=$(basename "${file}")
 #set premis event variables
 eventIdentifierType="UUID"
