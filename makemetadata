@@ -4,6 +4,8 @@
 version="0.2"
 scriptdir=$(dirname $(which "$0"))
 . "${scriptdir}/dpdpfunctions" || { echo "Missing '${scriptdir}/dpdpfunctions'. Exiting." ; exit 1 ;};
+unset dependencies
+dependencies=(uuidgen ffprobe mediainfo exiftool start_premis.sh premis_add_event.sh premis_add_agent.sh)
 
 cleanup(){
     exit 1
@@ -19,6 +21,8 @@ usage(){
     echo "  -m mediaid"
     exit
 }
+[ "${#}" = 0 ] && usage
+check_dependencies "${dependencies[@]}"
 
 # command-line options to set mediaid and original variables
 OPTIND=1
