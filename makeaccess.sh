@@ -71,7 +71,7 @@ for file in `find ./objects -maxdepth 1 -mindepth 1 ! -name '.*' -type f` ; do
     mkdir -p "$event_logs_path"
     mkdir -p "$techmd_path"
     export FFREPORT="file=${event_logs_path}/%p_%t_$(basename $0)_${version}.txt"
-    ffmpeg -n -report -v warning -i "$file" -c:v libx264 -pix_fmt yuv420p -b:v 750k -vf "yadif" -c:a:1 aac -b:a 128k "${access_path}/${base%.*}.mp4"
+    ffmpeg -n -report -v warning -i "$file" -c:v libx264 -pix_fmt yuv420p -b:v 750k -vf "yadif" -c:a aac -b:a 128k "${access_path}/${base%.*}.mp4"
     EC=`echo "$?"`
     if [ "$EC" -ne "0" ] ; then
         eventOutcome="failure"
