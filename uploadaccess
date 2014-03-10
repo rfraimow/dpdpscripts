@@ -57,4 +57,5 @@ if [ ! "$force" = "Y" ] ;then
         exit 1
     fi
 fi
+eval "${scriptdir}/upload-video --site http://archive.danceheritage.org/ --asset '${pbcoreid}' --thumbnail '${thumbnail_file}' --video '${video_file}' --user ${PBCORE_USERNAME} --pass ${PBCORE_PASSWORD}" 2>&1 | tee "${1}/metadata/submissionDocumentation/logs/upload_log.txt"
 _log -e
