@@ -5,7 +5,7 @@ scriptdir=$(dirname $(which "$0"))
 force=""
 
 cleanup(){
-    log -a "Process aborted"
+    _log -a "Process aborted"
     exit 1
 }
 
@@ -33,7 +33,7 @@ if [ -z "${package_path}" ]; then
 fi
 
 trap cleanup SIGHUP SIGINT SIGTERM
-log -b
+_log -b
 
 package_dir=$(dirname "${package_path}")
 pkgname=$(basename "${package_path}")
@@ -57,4 +57,4 @@ if [ ! "$force" = "Y" ] ;then
         exit 1
     fi
 fi
-log -e
+_log -e
