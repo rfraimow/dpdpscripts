@@ -1,50 +1,102 @@
 #!/bin/bash
-# make access
-version=0.2
-#requires uuid (ossp-uuid), ffmpeg, xmlstarlet
-#Associated scripts: verifySIPCompliance.py 
+# makeyoutube, makes a file appropriate for uploading to youtube
+version="1.0"
 scriptdir=$(dirname $(which "$0"))
-package_path="$1"
+. "$scriptdir/dpdpfunctions" || { echo "Missing '$scriptdir/dpdpfunctions'. Exiting." ; exit 1 ;};
+dependencies=(ffmpeg)
+_initialize_make
 
-. "${scriptdir}/dpdpfunctions" || { echo "Missing '${scriptdir}/dpdpfunctions'. Exiting." ; exit 1 ;};
-unset dependencies
-dependencies=(ffmpeg xml "${scriptdir}/removeDSStore" start_premis.sh premis_add_event.sh premis_add_agent.sh)
+usage(){
+    echo
+    echo "$(basename ${0}) ${version}"
+    echo "This application will create a high quality h264 file from a video file or package input with the following options."
+    echo "Dependencies: ${dependencies[@]}"
+    echo "Usage: $(basename $0) [ -d /path/to/deliver/to/ ] fileorpackage1 [ fileorpackage2 ...]"
+    echo "  -d directory ( directory to deliver the resulting file to )"
+    echo "  -o directory ( directory to write the resulting file to )"
+    echo "  -n (dry-run mode, show the commands that would be run but don't do anything)"
+    echo "  -e emailaddress ( send an email about the delivery, only valid if -d is used )"
+    echo "  -E emailaddress ( send an email about process outcome )"
+    echo "  -h ( display this help )"
+    echo
+    exit
+}
+[ "${#}" = 0 ] && usage
 
-onjects_path="./objects"
-logs_path="./metadata/submissionDocumentation/logs"
-techmd_path="./metadata/submissionDocumentation/techmd"
-access_path="./objects/access"
+# command-line options to set mediaid and original variables
+OPTIND=1
+while getopts ":o:d:e:E:nh" opt ; do
+    case "${opt}" in
+        o) outputdir_forced="$OPTARG" && _check_outputdir_forced ;;
+        d) deliverdir="$OPTARG" && check_deliverdir ;;
+        e) emailaddress_delivery="$OPTARG" ;;
+        E) emailaddress_outcome="$OPTARG" ;;
+        n) DRYRUN=true;;
+        h) usage ;;
+        *) echo "bad option -$OPTARG" ; usage ;;
+        :) echo "Option -$OPTARG requires an argument" ; exit 1 ;;
+    esac
+done
+shift $(( ${OPTIND} - 1 ))
 
-metadata_path="./metadata"
+[ "${emailaddress_outcome}" ] && check_emailaddress "${emailaddress_outcome}"
+[ "${emailaddress_delivery}" ] &&  check_emailaddress "${emailaddress_delivery}"
 
-check_dependencies "${dependencies[@]}"
-
-#checks on script arguments, package compliance check, will it conform and run in Archivematica?
-[ "$#" -ne "1" ] && { echo This script requires one argument, the path to a repository SIP. ; exit 1 ;};
-[ ! -d "$package_path" ] && { echo "$package_path" is not a directory. ; exit 1 ;};
-
-# warning, deleting .DS_Store files before processing package
-find "$package_path" -name '*.DS_Store' -type f -delete
-
-verifySIPCompliance.py "$package_path"
-[ "$?" != 0 ] && { echo "$package_path file SIP Compliance tests." ; exit 1 ;};
-
-# Add media tests here. At this point this requires an object of one media file.
-
-startdir=`pwd`
-cd "$package_path"
-mkdir -p "$access_path"
-for file in `find ./objects -maxdepth 1 -mindepth 1 ! -name '.*' -type f` ; do
-
-    base=`basename "$file"`
-
-    #check pre-requisites
-    if [ -s "${access_path}/${base%.*}.mp4" ] ; then
-        echo "${access_path}/${base%.*}.mp4 already exists"
-        # use output code to indicate that the service is not needed
-        exit 86
+while [ "${*}" != "" ] ; do
+    # get context about the input
+    input="$1"
+    if [ -z "${outputdir_forced}" ] ; then
+        [ -d "${input}" ] && { outputdir="${input}/objects/access" && logdir="${input}/metadata/submissionDocumentation/logs" ;};
+        [ -f "${input}" ] && { outputdir=$(dirname "${input}")"/access" && logdir="$(dirname "${input}")/access/logs" ;};
+        [ ! "${outputdir}" ] && { outputdir="${input}/objects/access" && logdir="${input}/metadata/submissionDocumentation/logs" ;};
+    else
+        outputdir="${outputdir_forced}"
+        logdir="${outputdir}/logs"
     fi
+    _find_input "${input}"
+    mediaid=$(basename "${input}" | cut -d. -f1)
 
+    # set up output
+    _log -b
+    output="${outputdir}/${mediaid%.*}.mp4"
+    [ -s "${output}" ] && { report -wt "WARNING ${output} already exists, skipping transcode" ; shift ; continue ;};
+    _run mkdir -p "${outputdir}"
+
+    # get information on the input
+    get_height "${sourcefile}"
+    get_width "${sourcefile}"
+
+    # clear local arrays
+    unset inputoptions
+    unset middleoptions
+
+    # encoding options
+    inputoptions+=(-vsync 0)
+    middleoptions+=(-movflags faststart)
+    middleoptions+=(-pix_fmt yuv420p)
+    middleoptions+=(-c:v libx264)
+    middleoptions+=(-b:v 750k)
+    if  [ "${height}" -eq "486" -a "${width}" -eq "720" ] ; then
+        middleoptions+=(-vf "crop=720:480:0:4,yadif")
+    elif  [ "${height}" -eq "512" -a "${width}" -eq "720" ] ;then
+        middleoptions+=(-vf "crop=720:480:0:32,yadif")
+    else
+        middleoptions+=(-vf yadif)
+    fi
+    middleoptions+=(-c:a libfaac)
+    middleoptions+=(-ac 2)
+    middleoptions+=(-b:a 128k)
+    middleoptions+=(-f mp4)
+
+    get_audio_mapping "${sourcefile}"
+    middleoptions+=(${audiomapping_ffmpeg[@]})
+
+    _prep_ffmpeg_log
+    _run_critical ffmpeg ${inputoptions[@]} -i "${sourcefile}" ${middleoptions[@]} "${output}"
+    echo
+    _summarize_make
+    _deliver_output
+    
     #set premis event variables
     eventIdentifierType="UUID"
     eventIdentifierValue=`uuid -v 4`
@@ -65,23 +117,11 @@ for file in `find ./objects -maxdepth 1 -mindepth 1 ! -name '.*' -type f` ; do
     agentNote=`"$ffmpeg_exe" -version 2> /dev/null`
     linkingEventIdentifierType="$eventIdentifierType"
     linkingEventIdentifierValue="eventIdentifierValue"
-
-    #ffmpeg time
-    event_logs_path="$logs_path/$eventType"
-    mkdir -p "$event_logs_path"
-    mkdir -p "$techmd_path"
-    export FFREPORT="file=${event_logs_path}/%p_%t_$(basename $0)_${version}.txt"
-    ffmpeg -n -report -v warning -i "$file" -c:v libx264 -pix_fmt yuv420p -b:v 750k -vf "yadif" -c:a aac -b:a 128k "${access_path}/${base%.*}.mp4"
-    EC=`echo "$?"`
-    if [ "$EC" -ne "0" ] ; then
-        eventOutcome="failure"
-        #quarantine?
-    else
-        eventOutcome="success"
-    fi
-    cd "$startdir"
+    
     [ ! -f "$package_path/metadata/premis.xml" ] && start_premis.sh "$package_path"
     premis_add_event.sh -x "$package_path/metadata/premis.xml" -i "$eventIdentifierType" -I "$eventIdentifierValue" -T "$eventType" -d "$eventDateTime" -D "$eventDetail" -E "$eventOutcome" -l "$agentIdentifierType" -L "$agentIdentifierValue" -r "$linkingAgentRole" -s "$sourceLinkingObjectIdentifierType" -S "$sourceLinkingObjectIdentifierValue" -o "URI" -O "./objects/access/${base%.*}.mp4"
     premis_add_agent.sh -x "$package_path/metadata/premis.xml" -i "$agentIdentifierType" -I "$agentIdentifierValue" -n "$agentName" -T "$agentType" -N "$agentNote" -l "$eventIdentifierType" -L "$eventIdentifierValue"
-
+    
+    shift
+    _log -e
 done

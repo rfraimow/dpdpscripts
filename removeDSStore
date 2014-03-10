@@ -1,8 +1,16 @@
 #!/bin/bash
-# @name removeDSStore
 # @author Dave Rice
-# @description The script accepts one of many folders as arguments, then searches for .DS_Store files in each one, and deletes all of them.
-# @version 1.0
+
+scriptdir=$(dirname "$0")
+. "$scriptdir/mmfunctions" || { echo "Missing '$scriptdir/mmfunctions'. Exiting." ; exit 1 ;};
+
+cleanup(){
+    _log -a "Process aborted"
+    exit 1
+}
+
+trap cleanup SIGHUP SIGINT SIGTERM
+_log -b
 
 while [ "$*" != "" ] ; do
     target=$1
@@ -11,3 +19,4 @@ while [ "$*" != "" ] ; do
     fi
     shift
 done
+_log -e
