@@ -8,7 +8,7 @@ scriptdir=$(dirname $(which "$0"))
 scriptname=$(basename "${0}")
 . "${scriptdir}/mmfunctions" || { echo "Missing '${scriptdir}/mmfunctions'. Exiting." ; exit 1 ;};
 unset dependencies
-dependencies=(md5deep xml "${scriptdir}/removeDSStore" start_premis.sh premis_add_event.sh premis_add_agent.sh)
+dependencies=(md5deep xml "${scriptdir}/removeDSStore")
 
 usage(){
     echo
