@@ -99,14 +99,22 @@ while [ "${*}" != "" ] ; do
     
     #set premis event variables
     eventIdentifierType="UUID"
-    eventIdentifierValue=`uuid -v 4`
+    if $(which uuidgen) ; then
+        eventIdentifierValue=`uuidgen`
+    else
+        eventIdentifierValue=`uuid -v 4`
+    fi
     eventType="compression-mp4.h264.bv750.aac.ba128-v1"
     eventDateTime=`date "+%FT%T"`
     eventDetail="Original object is compressed for access compliant with web-streaming"
     sourceLinkingObjectIdentifierType="URI"
     sourceLinkingObjectIdentifierValue="$file"
     outcomeLinkingObjectIdentifierType="UUID"
-    outcomeLinkingObjectIdentifierValue=`uuid -v 4`
+    if $(which uuidgen) ; then
+        outcomeLinkingObjectIdentifierValue=`uuidgen`
+    else
+        outcomeLinkingObjectIdentifierValue=`uuid -v 4`
+    fi
     linkingAgentRole="Executing program"
 
     #set premis agent variables
