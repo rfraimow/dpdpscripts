@@ -64,34 +64,6 @@ while [ "$*" != "" ] ; do
     cd "$pwd"
     _run rm -r -f "$FILELIST"
     
-    #set premis event variables
-    eventIdentifierType="UUID"
-    eventIdentifierValue=`uuid -v 4`
-    eventType="makemetadata"
-    eventDateTime=`date "+%FT%T"`
-    eventDetail="Original objects are assessed with ffprobe and mediainfo"
-    sourceLinkingObjectIdentifierType="URI"
-    sourceLinkingObjectIdentifierValue="$file"
-    outcomeLinkingObjectIdentifierType="UUID"
-    outcomeLinkingObjectIdentifierValue=`uuid -v 4`
-    linkingAgentRole="Executing program"
-
-    #set premis agent variables
-    agentIdentifierType="URI"
-    agentIdentifierValue="http://github.com/bavc/DPDP_Scripts/blob/master/makemetadata"
-    agentName="makemetadata (mediainfo and ffprobe)"
-    agentType="software"
-    linkingEventIdentifierType="$eventIdentifierType"
-    linkingEventIdentifierValue="eventIdentifierValue"
-    
-    logs_path="./metadata/submissionDocumentation/logs"
-    event_logs_path="$logs_path/$eventType"
-    mkdir -p "$event_logs_path"
-    
-    cd "$startdir"
-    [ ! -f "$package_path/metadata/premis.xml" ] && start_premis.sh "$package_path"
-    premis_add_event.sh -x "$package_path/metadata/premis.xml" -i "$eventIdentifierType" -I "$eventIdentifierValue" -T "$eventType" -d "$eventDateTime" -D "$eventDetail" -E "$eventOutcome" -l "$agentIdentifierType" -L "$agentIdentifierValue" -r "$linkingAgentRole" -s "$sourceLinkingObjectIdentifierType" -S "$sourceLinkingObjectIdentifierValue" -o "URI" -O "./objects/access/${base%.*}.mp4"
-    premis_add_agent.sh -x "$package_path/metadata/premis.xml" -i "$agentIdentifierType" -I "$agentIdentifierValue" -n "$agentName" -T "$agentType" -N "$agentNote" -l "$eventIdentifierType" -L "$eventIdentifierValue"
     shift
     _log -e
 done
