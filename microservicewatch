@@ -5,7 +5,7 @@ scriptdir=$(dirname $(which "$0"))
 CONFIG_FILE="$scriptdir/dpdp.conf"
 . "$CONFIG_FILE"
 
-. "${scriptdir}/dpdpfunctions" || { echo "Missing '${scriptdir}/dpdpfunctions'. Exiting." ; exit 1 ;};
+. "${scriptdir}/mmfunctions" || { echo "Missing '${scriptdir}/mmfunctions'. Exiting." ; exit 1 ;};
 
 NO_ARGS=1
 SCRIPTNAME="$1"

@@ -2,7 +2,7 @@
 # make metadata
 version="0.2"
 scriptdir=$(dirname $(which "$0"))
-. "$scriptdir/dpdpfunctions" || { echo "Missing '$scriptdir/dpdpfunctions'. Exiting." ; exit 1 ;};
+. "$scriptdir/mmfunctions" || { echo "Missing '$scriptdir/mmfunctions'. Exiting." ; exit 1 ;};
 dependencies=(ffprobe mediainfo exiftool)
 _initialize_make
 

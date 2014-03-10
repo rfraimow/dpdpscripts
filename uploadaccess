@@ -1,9 +1,7 @@
 #!/bin/bash
 
 scriptdir=$(dirname $(which "$0"))
-. "${scriptdir}/dpdpfunctions" || { echo "Missing '${scriptdir}/dpdpfunctions'. Exiting." ; exit 1 ;};
-CONFIG_FILE="${scriptdir}/dpdp.conf"
-. "${CONFIG_FILE}"
+. "${scriptdir}/mmfunctions" || { echo "Missing '${scriptdir}/mmfunctions'. Exiting." ; exit 1 ;};
 force=""
 
 cleanup(){
@@ -30,7 +28,7 @@ shift $(( ${OPTIND} - 1 ))
 
 package_path="${1}"
 if [ -z "${package_path}" ]; then
-    report -w The path to the AIP package must be declared.
+    report -w "The path to the AIP package must be declared."
     exit 1
 fi
 
@@ -47,7 +45,7 @@ report -d "pbcoreid ${pbcoreid}"
 report -d "thumbnail_file ${thumbnail_file}"
 report -d "video_file ${video_file}"
 if [ ! -n "${pbcoreid}" -o ! -s "${thumbnail_file}" -o ! -s "${video_file}" ] ; then
-    report -w  The upload script requires a valid pbcoreurl.txt file, thumbnail, and video proxy.
+    report -w  "The upload script requires a valid pbcoreurl.txt file, thumbnail, and video proxy."
     exit 1
 fi
 if [ ! "$force" = "Y" ] ;then
@@ -59,37 +57,4 @@ if [ ! "$force" = "Y" ] ;then
         exit 1
     fi
 fi
-base=$(basename "${file}")
-#set premis event variables
-eventIdentifierType="UUID"
-eventIdentifierValue=$(uuid -v 4)
-eventType="upload-access-file"
-eventDateTime=$(date "+%FT%T")
-eventDetail="An access copy is loaded for web-streaming"
-sourceLinkingObjectIdentifierType="URI"
-sourceLinkingObjectIdentifierValue="${file}"
-outcomeLinkingObjectIdentifierType="UUID"
-outcomeLinkingObjectIdentifierValue=$(uuid -v 4)
-linkingAgentRole="Executing program"
-
-#set premis agent variables
-agentIdentifierType="URI"
-agentIdentifierValue="upload-video"
-agentName="upload-video"
-agentType="software"
-agentNote="DHC SMN Ruby script to manage uploading video to pbcore repository"
-linkingEventIdentifierType="${eventIdentifierType}"
-linkingEventIdentifierValue="eventIdentifierValue"
-mkdir -p "${1}/metadata/submissionDocumentation/logs"
-eval "${scriptdir}/upload-video --site http://archive.danceheritage.org/ --asset '${pbcoreid}' --thumbnail '${thumbnail_file}' --video '${video_file}' --user ${PBCORE_USERNAME} --pass ${PBCORE_PASSWORD}" 2>&1 | tee "${1}/metadata/submissionDocumentation/logs/upload_log.txt"
-
-if [ "${?}" -ne "0" ] ; then
-    eventOutcome="failure"
-    #quarantine?
-else
-    eventOutcome="success"
-fi
-[ ! -f "${package_path}/metadata/premis.xml" ] && start_premis.sh "${package_path}"
-premis_add_event.sh -x "${package_path}/metadata/premis.xml" -i "${eventIdentifierType}" -I "${eventIdentifierValue}" -T "${eventType}" -d "${eventDateTime}" -D "${eventDetail}" -E "${eventOutcome}" -l "${agentIdentifierType}" -L "${agentIdentifierValue}" -r "${linkingAgentRole}" -s "${sourceLinkingObjectIdentifierType}" -S "${sourceLinkingObjectIdentifierValue}" -o "URI" -O "./objects/access/${base%.*}.mp4"
-premis_add_agent.sh -x "${package_path}/metadata/premis.xml" -i "${agentIdentifierType}" -I "${agentIdentifierValue}" -n "${agentName}" -T "${agentType}" -N "${agentNote}" -l "${eventIdentifierType}" -L "${eventIdentifierValue}"
 log -e
