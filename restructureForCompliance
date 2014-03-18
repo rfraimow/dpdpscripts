@@ -25,20 +25,17 @@
 target=$1
 
 if [ -d "$target" ]; then
-	mkdir "${target}/objects"
-	mv $(find "$target" -mindepth 1 -maxdepth 1 ! -name "objects") "${target}/objects/"
-	mkdir "${target}/metadata"
-	mkdir "${target}/metadata/submissionDocumentation"
+    mkdir "${target}/objects"
+    mv $(find "$target" -mindepth 1 -maxdepth 1 ! -name "objects") "${target}/objects/"
+    mkdir "${target}/metadata"
+    mkdir "${target}/metadata/submissionDocumentation"
 elif [ -f "$target" -a ! -d "$(dirname $target)/$(basename ${target%.*})" ]; then
     echo "$(dirname $target)/$(basename ${target%.*})/objects"
     mkdir -p "$(dirname $target)/$(basename ${target%.*})/objects" # okay, this line only works if the file actually has a period in the filename ... fix later
     mv "$target" "$(dirname $target)/$(basename ${target%.*})/objects/"
-	mkdir "$(dirname $target)/$(basename ${target%.*})/metadata"
-	mkdir "$(dirname $target)/$(basename ${target%.*})/metadata/submissionDocumentation"
+    mkdir "$(dirname $target)/$(basename ${target%.*})/metadata"
+    mkdir "$(dirname $target)/$(basename ${target%.*})/metadata/submissionDocumentation"
 else
-	echo Error: Needs SIP directory as argument 1>&2
-	exit 1
+    echo Error: Needs SIP directory as argument 1>&2
+    exit 1
 fi 
-
-
-
