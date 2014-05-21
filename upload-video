@@ -74,7 +74,7 @@ def verify_exists(fn, mediainfo, type)
     when :video
       errs.push "video file is not MPEG-4 container" unless gentrack.elements["Format"] && gentrack.elements["Format"].text == 'MPEG-4'
       errs.push "video file does not contain AVC video" unless gentrack.elements["Video_Format_List"] && gentrack.elements["Video_Format_List"].text == 'AVC'
-      errs.push "video file does not contain AAC audio" unless gentrack.elements["Audio_Format_List"] && gentrack.elements["Audio_Format_List"].text == 'AAC'
+      #errs.push "video file does not contain AAC audio" unless gentrack.elements["Audio_Format_List"] && gentrack.elements["Audio_Format_List"].text == 'AAC'
     when :image
       errs.push "thumbnail file is not an image" unless gentrack.elements["InternetMediaType"] && gentrack.elements["InternetMediaType"].text =~ /^image\//
     end
